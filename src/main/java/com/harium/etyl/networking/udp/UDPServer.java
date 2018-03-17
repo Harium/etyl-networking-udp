@@ -15,6 +15,7 @@ import java.util.*;
  * References:
  * http://tutorials.jenkov.com/java-nio/selectors.html
  * https://jfarcand.wordpress.com/2006/07/06/tricks-and-tips-with-nio-part-ii-why-selectionkey-attach-is-evil/
+ * http://rox-xmlrpc.sourceforge.net/niotut/
  */
 public class UDPServer implements Runnable {
 
@@ -28,6 +29,7 @@ public class UDPServer implements Runnable {
 
     Map<Integer, Data> ids = new HashMap<Integer, Data>();
     Map<String, Data> connections = new HashMap<String, Data>();
+    ByteBuffer req = ByteBuffer.allocate(BUFFER_SIZE);
 
     public UDPServer(int port) {
         this.port = port;
@@ -45,12 +47,10 @@ public class UDPServer implements Runnable {
 
     class Connection {
         SocketAddress sa;
-        ByteBuffer req;
         ByteBuffer resp;
         DatagramChannel channel;
 
         public Connection() {
-            req = ByteBuffer.allocate(BUFFER_SIZE);
             resp = ByteBuffer.allocate(BUFFER_SIZE);
         }
     }
@@ -117,20 +117,17 @@ public class UDPServer implements Runnable {
         connection.lastInteraction = System.currentTimeMillis();
 
         // Read message
-        byte[] array = new byte[connection.req.position()];
-        connection.req.rewind();
-        connection.req.get(array);
+        byte[] array = new byte[req.position()];
+        req.rewind();
+        req.get(array);
         receive(connection.id, array);
 
         // Clear buffer
-        connection.req.clear();
+        req.clear();
     }
 
     private Data updateConnection(SelectionKey key) throws IOException {
         DatagramChannel channel = (DatagramChannel) key.channel();
-        Connection connection = (Connection) key.attachment();
-
-        ByteBuffer req = connection.req;
         SocketAddress sa = channel.receive(req);
 
         String uniqueId = sa.toString();
@@ -152,8 +149,6 @@ public class UDPServer implements Runnable {
         } else {
             data = connections.get(uniqueId);
         }
-
-        data.req = req;
 
         return data;
     }
