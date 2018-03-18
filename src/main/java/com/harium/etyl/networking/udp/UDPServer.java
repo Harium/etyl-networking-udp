@@ -1,5 +1,15 @@
 package com.harium.etyl.networking.udp;
 
+import com.harium.etyl.networking.BaseServerImpl;
+import com.harium.etyl.networking.core.helper.ByteMessageHelper;
+import com.harium.etyl.networking.core.model.BaseServer;
+import com.harium.etyl.networking.core.model.Peer;
+import com.harium.etyl.networking.core.model.data.ConnectionData;
+import com.harium.etyl.networking.core.model.data.ConnectionType;
+import com.harium.etyl.networking.core.model.data.RawData;
+import com.harium.etyl.networking.core.protocol.Protocol;
+import com.harium.etyl.networking.core.protocol.ProtocolHandler;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -17,7 +27,7 @@ import java.util.*;
  * https://jfarcand.wordpress.com/2006/07/06/tricks-and-tips-with-nio-part-ii-why-selectionkey-attach-is-evil/
  * http://rox-xmlrpc.sourceforge.net/niotut/
  */
-public class UDPServer implements Runnable {
+public class UDPServer extends BaseServerImpl implements BaseServer, Runnable {
 
     private long MAX_IDLE = 10000; // 10 seconds
     private static final int BUFFER_SIZE = 1024;
@@ -27,28 +37,42 @@ public class UDPServer implements Runnable {
     private int port;
     private static int count = 0;
 
-    Map<Integer, Data> ids = new HashMap<Integer, Data>();
-    Map<String, Data> connections = new HashMap<String, Data>();
-    ByteBuffer req = ByteBuffer.allocate(BUFFER_SIZE);
+    protected Map<Integer, Data> peers = new HashMap<Integer, Data>();
+    protected Map<String, Data> connections = new HashMap<String, Data>();
+    protected ByteBuffer req = ByteBuffer.allocate(BUFFER_SIZE);
+
+    protected ConnectionData dataHolder = new ConnectionData();
 
     public UDPServer(int port) {
+        super();
         this.port = port;
+        dataHolder.connectionType = ConnectionType.UDP;
     }
 
-    class Data extends Connection {
+    class Data extends Peer {
         int id;
         long lastInteraction = 0;
+        SocketAddress sa;
+        DatagramChannel channel;
+        ByteBuffer resp;
+
         List<byte[]> messages;
 
         public Data() {
+            resp = ByteBuffer.allocate(BUFFER_SIZE);
             messages = new ArrayList<>();
+        }
+
+        @Override
+        public int getId() {
+            return id;
         }
     }
 
     class Connection {
         SocketAddress sa;
-        ByteBuffer resp;
         DatagramChannel channel;
+        ByteBuffer resp;
 
         public Connection() {
             resp = ByteBuffer.allocate(BUFFER_SIZE);
@@ -83,7 +107,6 @@ public class UDPServer implements Runnable {
     }
 
     private void process(Selector selector) throws IOException {
-
         selector.select();
         Iterator selectedKeys = selector.selectedKeys().iterator();
         while (selectedKeys.hasNext()) {
@@ -142,7 +165,9 @@ public class UDPServer implements Runnable {
 
             // Add a new connection
             connections.put(uniqueId, data);
-            ids.put(count, data);
+            peers.put(count, data);
+            // TODO etyl-networking
+            onConnect(data);
 
             System.out.println("Added " + count + ": " + uniqueId);
             count++;
@@ -163,20 +188,28 @@ public class UDPServer implements Runnable {
         connection.channel.send(connection.resp, connection.sa);
     }
 
+
     public void receive(int connectionId, byte[] message) {
+        Peer peer = getPeer(connectionId);
+
+        serverHandler.receiveMessageData(peer, dataHolder);
         System.out.println("Receive: " + new String(message));
     }
 
-    public void send(int connectionId, byte[] message) throws IOException {
-        Data connection = ids.get(connectionId);
+    public void send(int connectionId, byte[] message) {
+        Data connection = peers.get(connectionId);
         send(connection, message);
     }
 
-    public void send(Data connection, byte[] message) throws IOException {
+    public void send(Data connection, byte[] message) {
         //Data connection = connections.get(connectionId);
         //connection.messages.add(message);
         connection.resp = ByteBuffer.wrap(message);
-        connection.channel.send(connection.resp, connection.sa);
+        try {
+            connection.channel.send(connection.resp, connection.sa);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void poll() {
@@ -193,18 +226,14 @@ public class UDPServer implements Runnable {
 
                     // Remove connection due to inactivity
                     if (disconnectByInactivity && connection.lastInteraction + MAX_IDLE < now) {
-                        //ids.remove(getUniqueId(connection));
+                        //peers.remove(getUniqueId(connection));
                         it.remove();
                         continue;
                     }
 
                     String message = "To " + connection.id + ": Hello " + count;
                     count++;
-                    try {
-                        send(connection, message.getBytes());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    send(connection, message.getBytes());
                 }
             }
 
@@ -213,6 +242,71 @@ public class UDPServer implements Runnable {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    // Base Server Methods
+    @Override
+    public void onConnect(Peer peer) {
+        serverHandler.addPeer(peer);
+        joinPeer(peer);
+    }
+
+    @Override
+    public void joinPeer(Peer peer) {
+
+    }
+
+    @Override
+    public void leftPeer(Peer peer) {
+
+    }
+
+    @Override
+    public boolean hasPeer(int id) {
+        return peers.containsKey(id);
+    }
+
+    @Override
+    public Peer getPeer(int id) {
+        return peers.get(id);
+    }
+
+    @Override
+    public void removePeer(int id) {
+        Peer peer = getPeer(id);
+        if (peer != null) {
+            leftPeer(peer);
+            serverHandler.removePeer(peer);
+            peers.remove(id);
+        }
+    }
+
+    @Override
+    public void sendToUDP(int id, ConnectionData connectionData) {
+        byte[] message = ByteMessageHelper.concatenate(connectionData.prefix, connectionData.data);
+        send(id, message);
+    }
+
+    @Override
+    public void sendToUDP(int id, RawData rawData) {
+        send(id, rawData.data);
+    }
+
+    @Override
+    public void sendToAllUDP(ConnectionData connectionData) {
+        for (Integer id : peers.keySet()) {
+            sendToUDP(id, connectionData);
+        }
+    }
+
+    @Override
+    public void sendToAllExceptUDP(int exceptId, ConnectionData connectionData) {
+        for (Integer id : peers.keySet()) {
+            if (exceptId == id) {
+                continue;
+            }
+            sendToUDP(id, connectionData);
         }
     }
 

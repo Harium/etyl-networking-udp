@@ -19,4 +19,11 @@
             </plugin>
         </plugins>
     </build>
+    <dependencies>
+        <dependency>
+            <groupId>com.harium.etyl.networking</groupId>
+            <artifactId>core</artifactId>
+            <version>1.3.0</version>
+        </dependency>
+    </dependencies>
 </project>

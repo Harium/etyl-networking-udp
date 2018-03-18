@@ -1,5 +1,11 @@
 package com.harium.etyl.networking.udp;
 
+import com.harium.etyl.networking.BaseClientImpl;
+import com.harium.etyl.networking.core.helper.ByteMessageHelper;
+import com.harium.etyl.networking.core.model.data.ConnectionData;
+import com.harium.etyl.networking.core.model.data.ConnectionType;
+import com.harium.etyl.networking.core.model.data.RawData;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -7,7 +13,7 @@ import java.nio.channels.DatagramChannel;
 import java.util.ArrayList;
 import java.util.List;
 
-public class UDPClient {
+public class UDPClient extends BaseClientImpl {
 
     private ByteBuffer in = ByteBuffer.allocate(64);
 
@@ -17,10 +23,12 @@ public class UDPClient {
 
     DatagramChannel channel;
     List<String> messages;
+    protected ConnectionData dataHolder = new ConnectionData();
 
     public UDPClient(String host, int port) {
         this.host = host;
         this.port = port;
+        dataHolder.connectionType = ConnectionType.UDP;
         messages = new ArrayList<>();
     }
 
