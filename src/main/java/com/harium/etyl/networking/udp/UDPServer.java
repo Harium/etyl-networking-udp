@@ -29,10 +29,12 @@ import java.util.*;
  */
 public class UDPServer extends BaseServerImpl implements BaseServer, Runnable {
 
+    // Disconnect by inactivity
     private long MAX_IDLE = 10000; // 10 seconds
+    protected boolean disconnectByInactivity = true;
+
     private static final int BUFFER_SIZE = 1024;
     public static final String CHARSET = "UTF-8";
-    protected boolean disconnectByInactivity = true;
 
     private int port;
     private static int count = 0;
@@ -49,7 +51,15 @@ public class UDPServer extends BaseServerImpl implements BaseServer, Runnable {
         dataHolder.connectionType = ConnectionType.UDP;
     }
 
-    class Data extends Peer {
+    public Map<String, Data> getConnections() {
+        return connections;
+    }
+
+    public Map<Integer, Data> getPeers() {
+        return peers;
+    }
+
+    public class Data extends Peer {
         int id;
         long lastInteraction = 0;
         SocketAddress sa;
@@ -57,6 +67,7 @@ public class UDPServer extends BaseServerImpl implements BaseServer, Runnable {
         ByteBuffer resp;
 
         List<byte[]> messages;
+        SelectionKey key;
 
         public Data() {
             resp = ByteBuffer.allocate(BUFFER_SIZE);
@@ -81,7 +92,6 @@ public class UDPServer extends BaseServerImpl implements BaseServer, Runnable {
 
     public void start() {
         new Thread(this).start();
-        poll();
     }
 
     public void run() {
@@ -119,7 +129,6 @@ public class UDPServer extends BaseServerImpl implements BaseServer, Runnable {
 
             if (key.isReadable()) {
                 read(key);
-                key.interestOps(SelectionKey.OP_WRITE);
             } else if (key.isWritable()) {
                 /*Connection connection = (Connection) key.attachment();
 
@@ -161,6 +170,7 @@ public class UDPServer extends BaseServerImpl implements BaseServer, Runnable {
             data.id = count;
             data.sa = sa;
             data.channel = channel;
+            data.key = key;
             data.lastInteraction = System.currentTimeMillis();
 
             // Add a new connection
@@ -204,44 +214,12 @@ public class UDPServer extends BaseServerImpl implements BaseServer, Runnable {
     public void send(Data connection, byte[] message) {
         //Data connection = connections.get(connectionId);
         //connection.messages.add(message);
+        connection.key.interestOps(SelectionKey.OP_WRITE);
         connection.resp = ByteBuffer.wrap(message);
         try {
             connection.channel.send(connection.resp, connection.sa);
         } catch (IOException e) {
             e.printStackTrace();
-        }
-    }
-
-    private void poll() {
-        int count = 0;
-        while (true) {
-            if (!connections.isEmpty()) {
-                long now = System.currentTimeMillis();
-                System.out.println("Users: " + connections.size());
-
-                for (Iterator<Map.Entry<String, Data>> it = connections.entrySet().iterator(); it.hasNext(); ) {
-                    Map.Entry<String, Data> entry = it.next();
-                    //int id = entry.getKey();
-                    Data connection = entry.getValue();
-
-                    // Remove connection due to inactivity
-                    if (disconnectByInactivity && connection.lastInteraction + MAX_IDLE < now) {
-                        //peers.remove(getUniqueId(connection));
-                        it.remove();
-                        continue;
-                    }
-
-                    String message = "To " + connection.id + ": Hello " + count;
-                    count++;
-                    send(connection, message.getBytes());
-                }
-            }
-
-            try {
-                Thread.sleep(3000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
         }
     }
 

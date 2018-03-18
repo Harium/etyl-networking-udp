@@ -4,7 +4,6 @@ import com.harium.etyl.networking.BaseClientImpl;
 import com.harium.etyl.networking.core.helper.ByteMessageHelper;
 import com.harium.etyl.networking.core.model.data.ConnectionData;
 import com.harium.etyl.networking.core.model.data.ConnectionType;
-import com.harium.etyl.networking.core.model.data.RawData;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -88,8 +87,10 @@ public class UDPClient extends BaseClientImpl {
                 in.rewind();
                 in.get(messageBytes);
 
-                String message = new String(messageBytes);
-                System.out.println("Received(" + messageBytes.length + "): " + message);
+                dataHolder.prefix = ByteMessageHelper.getPrefix(messageBytes);
+                dataHolder.data = ByteMessageHelper.wipePrefix(dataHolder.prefix, messageBytes);
+
+                protocolHandler.receiveMessageData(SERVER, dataHolder);
                 in.clear();
             }
 
