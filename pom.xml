@@ -67,6 +67,9 @@
                     <source>1.8</source>
                     <target>1.8</target>
                     <optimize>true</optimize>
+                    <excludes>
+                        <exclude>**/example/*</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
             <plugin>
