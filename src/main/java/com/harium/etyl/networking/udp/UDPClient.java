@@ -7,21 +7,21 @@ import java.nio.channels.DatagramChannel;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.harium.etyl.networking.udp.UDPServer.BUFFER_SIZE;
+
 public class UDPClient {
 
-    private ByteBuffer in = ByteBuffer.allocate(64);
+    private ByteBuffer in = ByteBuffer.allocate(BUFFER_SIZE);
 
     boolean connected = false;
     String host;
     int port;
 
     DatagramChannel channel;
-    List<String> messages;
 
     public UDPClient(String host, int port) {
         this.host = host;
         this.port = port;
-        messages = new ArrayList<>();
     }
 
     private void connect() throws IOException {

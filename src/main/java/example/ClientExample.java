@@ -1,4 +1,6 @@
-package com.harium.etyl.networking.udp;
+package example;
+
+import com.harium.etyl.networking.udp.UDPClient;
 
 import java.io.IOException;
 import java.util.ArrayList;

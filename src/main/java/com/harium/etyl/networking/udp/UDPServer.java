@@ -1,5 +1,8 @@
 package com.harium.etyl.networking.udp;
 
+import com.harium.etyl.networking.udp.model.Connection;
+import com.harium.etyl.networking.udp.model.Data;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -10,6 +13,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.charset.Charset;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * References:
@@ -17,47 +21,32 @@ import java.util.*;
  * https://jfarcand.wordpress.com/2006/07/06/tricks-and-tips-with-nio-part-ii-why-selectionkey-attach-is-evil/
  * http://rox-xmlrpc.sourceforge.net/niotut/
  */
-public class UDPServer implements Runnable {
+public abstract class UDPServer implements Runnable {
 
     private long MAX_IDLE = 10000; // 10 seconds
-    private static final int BUFFER_SIZE = 1024;
+    public static final int BUFFER_SIZE = 1024;
     public static final String CHARSET = "UTF-8";
     protected boolean disconnectByInactivity = true;
+    protected int inactivityDelay = 10000; // 10 seconds
+
+    protected int sleepDelay = 3000; // 3 seconds
 
     private int port;
     private static int count = 0;
 
-    Map<Integer, Data> ids = new HashMap<Integer, Data>();
-    Map<String, Data> connections = new HashMap<String, Data>();
+    protected Map<Integer, Data> ids = new HashMap<Integer, Data>();
+    protected Map<String, Data> connections = new HashMap<String, Data>();
     ByteBuffer req = ByteBuffer.allocate(BUFFER_SIZE);
+
+    protected Map<Data, byte[]> queue = new LinkedHashMap<>();
 
     public UDPServer(int port) {
         this.port = port;
     }
 
-    class Data extends Connection {
-        int id;
-        long lastInteraction = 0;
-        List<byte[]> messages;
-
-        public Data() {
-            messages = new ArrayList<>();
-        }
-    }
-
-    class Connection {
-        SocketAddress sa;
-        ByteBuffer resp;
-        DatagramChannel channel;
-
-        public Connection() {
-            resp = ByteBuffer.allocate(BUFFER_SIZE);
-        }
-    }
-
     public void start() {
         new Thread(this).start();
-        poll();
+        update();
     }
 
     public void run() {
@@ -83,7 +72,6 @@ public class UDPServer implements Runnable {
     }
 
     private void process(Selector selector) throws IOException {
-
         selector.select();
         Iterator selectedKeys = selector.selectedKeys().iterator();
         while (selectedKeys.hasNext()) {
@@ -144,7 +132,7 @@ public class UDPServer implements Runnable {
             connections.put(uniqueId, data);
             ids.put(count, data);
 
-            System.out.println("Added " + count + ": " + uniqueId);
+            onJoin(count);
             count++;
         } else {
             data = connections.get(uniqueId);
@@ -164,7 +152,7 @@ public class UDPServer implements Runnable {
     }
 
     public void receive(int connectionId, byte[] message) {
-        System.out.println("Receive: " + new String(message));
+        onMessage(connectionId, message);
     }
 
     public void send(int connectionId, byte[] message) throws IOException {
@@ -179,29 +167,30 @@ public class UDPServer implements Runnable {
         connection.channel.send(connection.resp, connection.sa);
     }
 
-    private void poll() {
-        int count = 0;
+    private void update() {
+
+        long lastCheck = 0;
+
         while (true) {
+            poll();
             if (!connections.isEmpty()) {
                 long now = System.currentTimeMillis();
                 System.out.println("Users: " + connections.size());
 
-                for (Iterator<Map.Entry<String, Data>> it = connections.entrySet().iterator(); it.hasNext(); ) {
-                    Map.Entry<String, Data> entry = it.next();
+                if (now - lastCheck > inactivityDelay) {
+                    lastCheck = now;
+                    checkInactivity(now);
+                }
+
+                for (Iterator<Map.Entry<Data, byte[]>> it = queue.entrySet().iterator(); it.hasNext(); ) {
+                    Map.Entry<Data, byte[]> entry = it.next();
                     //int id = entry.getKey();
-                    Data connection = entry.getValue();
+                    Data connection = entry.getKey();
 
-                    // Remove connection due to inactivity
-                    if (disconnectByInactivity && connection.lastInteraction + MAX_IDLE < now) {
-                        //ids.remove(getUniqueId(connection));
-                        it.remove();
-                        continue;
-                    }
+                    byte[] message = entry.getValue();
 
-                    String message = "To " + connection.id + ": Hello " + count;
-                    count++;
                     try {
-                        send(connection, message.getBytes());
+                        send(connection, message);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -209,11 +198,35 @@ public class UDPServer implements Runnable {
             }
 
             try {
-                Thread.sleep(3000);
+                TimeUnit.MILLISECONDS.sleep(sleepDelay);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
     }
+
+    private void checkInactivity(long now) {
+        for (Iterator<Map.Entry<String, Data>> it = connections.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<String, Data> entry = it.next();
+            //int id = entry.getKey();
+            Data connection = entry.getValue();
+
+            // Remove connection due to inactivity
+            if (disconnectByInactivity && connection.lastInteraction + MAX_IDLE < now) {
+                //ids.remove(getUniqueId(connection));
+                onLeft(connection.id);
+                it.remove();
+                continue;
+            }
+        }
+    }
+
+    protected abstract void onLeft(int connectionId);
+
+    protected abstract void onJoin(int connectionId);
+
+    protected abstract void onMessage(int connectionId, byte[] message);
+
+    protected abstract void poll();
 
 }
