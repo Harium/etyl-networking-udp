@@ -2,6 +2,7 @@ package com.harium.etyl.networking.udp;
 
 import com.harium.etyl.networking.udp.model.Connection;
 import com.harium.etyl.networking.udp.model.Data;
+import com.harium.etyl.networking.udp.utils.UDPUtils;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -14,6 +15,8 @@ import java.nio.channels.Selector;
 import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+
+import static com.harium.etyl.networking.udp.utils.ByteUtils.byteArrayToInt;
 
 /**
  * References:
@@ -38,14 +41,16 @@ public abstract class UDPServer implements Runnable {
     protected Map<String, Data> connections = new HashMap<String, Data>();
     ByteBuffer req = ByteBuffer.allocate(BUFFER_SIZE);
 
-    protected Map<Data, byte[]> queue = new LinkedHashMap<>();
+    private Map<Data, byte[]> queue = new LinkedHashMap<>();
 
     public UDPServer(int port) {
         this.port = port;
     }
 
     public void start() {
+        // Connect clients thread
         new Thread(this).start();
+        // Send messages thread
         update();
     }
 
@@ -142,17 +147,22 @@ public abstract class UDPServer implements Runnable {
     }
 
     private void write(Connection connection, String message) throws IOException {
-        connection.resp = Charset.forName(CHARSET).newEncoder().encode(CharBuffer.wrap(message));
-        connection.channel.send(connection.resp, connection.sa);
+        connection.response = Charset.forName(CHARSET).newEncoder().encode(CharBuffer.wrap(message));
+        connection.channel.send(connection.response, connection.sa);
     }
 
     private void write(Connection connection, byte[] message) throws IOException {
-        connection.resp = ByteBuffer.wrap(message);
-        connection.channel.send(connection.resp, connection.sa);
+        connection.response = ByteBuffer.wrap(message);
+        connection.channel.send(connection.response, connection.sa);
     }
 
     public void receive(int connectionId, byte[] message) {
-        onMessage(connectionId, message);
+        // Split messages
+        List<byte[]> built = UDPUtils.splitMessages(message);
+
+        for (byte[] m : built) {
+            onMessage(connectionId, m);
+        }
     }
 
     public void send(int connectionId, byte[] message) throws IOException {
@@ -161,10 +171,8 @@ public abstract class UDPServer implements Runnable {
     }
 
     public void send(Data connection, byte[] message) throws IOException {
-        //Data connection = connections.get(connectionId);
-        //connection.messages.add(message);
-        connection.resp = ByteBuffer.wrap(message);
-        connection.channel.send(connection.resp, connection.sa);
+        connection.response = ByteBuffer.wrap(message);
+        connection.channel.send(connection.response, connection.sa);
     }
 
     private void update() {
@@ -229,4 +237,8 @@ public abstract class UDPServer implements Runnable {
 
     protected abstract void poll();
 
+    protected void addMessage(Data connection, byte[] message) {
+        byte[] headerMessage = UDPUtils.buildMessage(message);
+        queue.put(connection, headerMessage);
+    }
 }

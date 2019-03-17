@@ -1,15 +1,16 @@
 package com.harium.etyl.networking.udp;
 
+import com.harium.etyl.networking.udp.utils.UDPUtils;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
-import java.util.ArrayList;
 import java.util.List;
 
 import static com.harium.etyl.networking.udp.UDPServer.BUFFER_SIZE;
 
-public class UDPClient {
+public abstract class UDPClient {
 
     private ByteBuffer in = ByteBuffer.allocate(BUFFER_SIZE);
 
@@ -59,7 +60,8 @@ public class UDPClient {
     }
 
     public void send(byte[] message) {
-        send(ByteBuffer.wrap(message));
+        byte[] headerMessage = UDPUtils.buildMessage(message);
+        send(ByteBuffer.wrap(headerMessage));
     }
 
     public void send(ByteBuffer buffer) {
@@ -80,14 +82,19 @@ public class UDPClient {
                 in.rewind();
                 in.get(messageBytes);
 
-                String message = new String(messageBytes);
-                System.out.println("Received(" + messageBytes.length + "): " + message);
+                List<byte[]> messages = UDPUtils.splitMessages(messageBytes);
+                for (byte[] message : messages) {
+                    onReceive(message);
+                }
+
                 in.clear();
             }
 
             Thread.sleep(1000);
         }
     }
+
+    protected abstract void onReceive(byte[] message);
 
     public void close() {
         try {

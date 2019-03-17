@@ -35,7 +35,8 @@ public class SimpleServer extends UDPServer {
         for (Data connection : connections.values()) {
             String raw = "Hello (" + pollCount + "): " + connection.id;
             byte[] message = raw.getBytes();
-            queue.put(connection, message);
+            addMessage(connection, message);
         }
     }
+
 }
