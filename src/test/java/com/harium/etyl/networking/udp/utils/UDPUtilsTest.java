@@ -11,7 +11,7 @@ public class UDPUtilsTest {
 
     @Test
     public void testBuildMessage() {
-        Assert.assertArrayEquals(new byte[]{0, 0, 2, 0}, UDPUtils.buildMessage("Hello".getBytes()));
+        Assert.assertArrayEquals(new byte[]{0, 0, 0, 5, 72, 101, 108, 108, 111}, UDPUtils.buildMessage("Hello".getBytes()));
     }
 
     @Test
