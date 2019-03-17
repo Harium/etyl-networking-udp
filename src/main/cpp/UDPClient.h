@@ -51,13 +51,18 @@ public:
 		while(true)
 		{
 			boost::thread::sleep(boost::get_system_time()+boost::posix_time::seconds(2));
-			byte* a = new byte[5];
-			ByteSerializer::serialize("Mars!", a, 0);
 
-			//string str = "Mars?";
-			//size_t leng = str.length();
-			size_t leng = 5;
-			socket_.async_send_to(boost::asio::buffer(a, leng),
+            //size_t leng = str.length();
+
+			byte* message = new byte[9];
+			message[0] = (byte) 0;
+			message[1] = (byte) 0;
+			message[2] = (byte) 0;
+			message[3] = (byte) 5;
+			ByteSerializer::serialize("Mars?", message, 4);
+
+			size_t leng = 9;
+			socket_.async_send_to(boost::asio::buffer(message, leng),
 					endpoint_,
 					boost::bind(&UDPClient::handle_write,this,
 							boost::asio::placeholders::error,

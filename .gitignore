@@ -15,3 +15,7 @@ hs_err_pid*
 .idea
 *.iml
 target/
+
+# C++ Files #
+*.o
+*.out

@@ -5,11 +5,32 @@ Server has only the Java option
 Client has a Java and a C++ (Boost::ASIO) version
 
 ## Maven
-*Not available yet*
 ```xml
 <dependency>
     <groupId>com.harium.etyl.networking</groupId>
     <artifactId>udp</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
 </dependency>
 ```
+
+## Building C++ Example
+
+### Ubuntu
+```
+sudo apt-get install libboost-dev
+```
+### Fedora
+```
+sudo dnf install boost-devel
+```
+
+### Compiling
+```
+g++ -c ByteDef.cpp 
+g++ -c ByteSerializer.cpp
+g++ -c UDPClient.cpp -lboost_thread -lboost_system -lpthread
+g++ -c ClientExample.cpp
+g++ ByteDef.o ByteSerializer.o UDPClient.o ClientExample.o -lboost_thread -lboost_system -lpthread
+
+```
+
