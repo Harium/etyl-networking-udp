@@ -52,6 +52,7 @@ public:
 		{
 			boost::thread::sleep(boost::get_system_time()+boost::posix_time::seconds(2));
 
+            //std::string message = "Mars?";
             //size_t leng = str.length();
 
 			byte* message = new byte[9];

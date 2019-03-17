@@ -19,3 +19,8 @@ target/
 # C++ Files #
 *.o
 *.out
+# Binary file #
+udplib
+
+# Emacs files #
+*~
