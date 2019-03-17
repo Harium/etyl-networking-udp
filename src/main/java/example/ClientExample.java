@@ -1,8 +1,5 @@
 package example;
 
-import com.harium.etyl.networking.udp.UDPClient;
-
-import java.io.IOException;
 import java.util.ArrayList;
 
 public class ClientExample {
@@ -10,8 +7,8 @@ public class ClientExample {
     public static final String HOST = "localhost";
     public static final int PORT = 8340;
 
-    public static void main(String[] args) throws IOException, InterruptedException {
-        UDPClient client = new UDPClient(HOST, PORT);
+    public static void main(String[] args) throws InterruptedException {
+        SimpleClient client = new SimpleClient(HOST, PORT);
         client.start();
 
         log("Connecting to Server on port:" + PORT);
@@ -23,15 +20,20 @@ public class ClientExample {
         messages.add("or");
         messages.add("Mars");
 
+        messages.add("Hello");
+        messages.add("Mars");
+        messages.add("or");
+        messages.add("World");
+
         for (String message : messages) {
             log("Sending: " + message);
             client.send(message.getBytes());
 
             // wait for 2 seconds before sending next message
-            Thread.sleep(2000);
+            Thread.sleep(1000);
         }
 
-        Thread.sleep(5000);
+        Thread.sleep(2000);
         client.close();
     }
 

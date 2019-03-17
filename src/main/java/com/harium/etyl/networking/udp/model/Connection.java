@@ -10,9 +10,9 @@ public class Connection {
     public SocketAddress sa;
     public DatagramChannel channel;
 
-    public ByteBuffer resp;
+    public ByteBuffer response;
 
     public Connection() {
-        resp = ByteBuffer.allocate(UDPServer.BUFFER_SIZE);
+        response = ByteBuffer.allocate(UDPServer.BUFFER_SIZE);
     }
 }
