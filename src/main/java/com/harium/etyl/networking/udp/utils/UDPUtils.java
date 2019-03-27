@@ -41,7 +41,7 @@ public class UDPUtils {
     }
 
     public static List<byte[]> splitMessages(byte[] message) {
-        // Turn into bucket (or add on a list based on connectioId)
+        // TODO Turn into bucket (or add on a list based on connectioId)
         List<byte[]> messages = new ArrayList<>();
 
         int cursor = 0;
