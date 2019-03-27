@@ -17,11 +17,11 @@ Client has a Java and a C++ (Boost::ASIO) version
 
 ### Ubuntu
 ```
-sudo apt-get install libboost-dev
+sudo apt-get install libboost-dev libgtest-dev
 ```
 ### Fedora
 ```
-sudo dnf install boost-devel
+sudo dnf install boost-devel gtest-devel
 ```
 
 ### Compiling
@@ -34,3 +34,8 @@ g++ ByteDef.o ByteSerializer.o UDPClient.o ClientExample.o -lboost_thread -lboos
 
 ```
 
+### Testing
+```bash
+cd /src/test/cpp/
+sh test.sh
+```
