@@ -9,7 +9,7 @@ Client has a Java and a C++ (Boost::ASIO) version
 <dependency>
     <groupId>com.harium.etyl.networking</groupId>
     <artifactId>udp</artifactId>
-    <version>0.2.0</version>
+    <version>0.2.1</version>
 </dependency>
 ```
 
