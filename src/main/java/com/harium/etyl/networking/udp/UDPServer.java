@@ -16,8 +16,6 @@ import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static com.harium.etyl.networking.udp.utils.ByteUtils.byteArrayToInt;
-
 /**
  * References:
  * http://tutorials.jenkov.com/java-nio/selectors.html
@@ -194,7 +192,6 @@ public abstract class UDPServer implements Runnable {
                     Map.Entry<Data, byte[]> entry = it.next();
                     //int id = entry.getKey();
                     Data connection = entry.getKey();
-
                     byte[] message = entry.getValue();
 
                     try {
@@ -236,6 +233,14 @@ public abstract class UDPServer implements Runnable {
     protected abstract void onMessage(int connectionId, byte[] message);
 
     protected abstract void poll();
+
+    protected void addMessage(int connectionId, byte[] message) {
+        if (!ids.containsKey(connectionId)) {
+            return;
+        }
+        Data data = ids.get(connectionId);
+        addMessage(data, message);
+    }
 
     protected void addMessage(Data connection, byte[] message) {
         byte[] headerMessage = UDPUtils.buildMessage(message);
