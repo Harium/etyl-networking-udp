@@ -234,7 +234,12 @@ public abstract class UDPServer implements Runnable {
 
     protected abstract void poll();
 
-    protected void addMessage(int connectionId, byte[] message) {
+    /**
+     * Async send message
+     * @param connectionId
+     * @param message
+     */
+    public void addMessage(int connectionId, byte[] message) {
         if (!ids.containsKey(connectionId)) {
             return;
         }
@@ -242,7 +247,12 @@ public abstract class UDPServer implements Runnable {
         addMessage(data, message);
     }
 
-    protected void addMessage(Data connection, byte[] message) {
+    /**
+     * Async send message
+     * @param connection
+     * @param message
+     */
+    public void addMessage(Data connection, byte[] message) {
         byte[] headerMessage = UDPUtils.buildMessage(message);
         queue.put(connection, headerMessage);
     }
