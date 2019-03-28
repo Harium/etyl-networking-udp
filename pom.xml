@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.harium.etyl.networking</groupId>
     <artifactId>udp</artifactId>
-    <version>0.2.1</version>
+    <version>0.2.2</version>
     <packaging>jar</packaging>
     <name>Etyl Networking UDP</name>
     <description>Keel's Core</description>
